@@ -163,6 +163,7 @@ void OLED_CLS(void)//清屏
 	OLED_Fill(0x00);
 }
 
+//清除状态栏以下的部分
 void OLED_CLE_part()
 {
 	//清除屏幕

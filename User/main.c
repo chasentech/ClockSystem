@@ -79,12 +79,14 @@ void init()
 	
 	OLED_Fill(0x00);//全屏灭
 	
+	/*
 	//通知栏信息显示
-	OLED_DrawBMP(0, 0, 16, 2,(unsigned char *)alarm_flag, 0);	//闹钟显示
-	OLED_DrawBMP(18, 0, 34, 2,(unsigned char *)bell_flag, 0);	//报时显示
+	OLED_DrawBMP(0, 0, 16, 2, (unsigned char *)alarm_flag, 0);	//闹钟显示
+	OLED_DrawBMP(18, 0, 34, 2, (unsigned char *)bell_flag, 0);	//报时显示
 	OLED_ShowStr(44, 0, screen_time, 2, 0);	//中部时间显示
 	OLED_DrawBMP(96, 0, 128, 2,(unsigned char *)BMP_battery, 0);
 	battery_show(2);	//电量显示
+	*/
 	
 //	set_time(2019, 2, 28, 11, 28, 00);
 
@@ -127,23 +129,25 @@ int main(void)
 //	LED_GPIO_Config();
 	
 	init();
-	g_model = Standby;
+	//g_model = Standby;
+	g_model = CloseScreen; //息屏显示模式
 	
 	while(1)
 	{
 //		printf("111\n");
 		switch(g_model)
 		{
-			case Standby: model_Standby(); break;
-			case Menu: model_Menu(); break;
-			case Settime: model_Settime(); break;
-			case Alarm: model_Alarm(); break;
-			case Set: model_Set(); break;
-			case Game: break;
-			case Music: break;
-			case Calendar: break;
-			case Tools: model_Tools(); break;
-			case About: model_About(); break;
+			case CloseScreen: model_Close(); break;
+			case Standby:  model_Standby();  break;
+			case Menu:     model_Menu();     break;
+			case Settime:  model_Settime();  break;
+			case Alarm:    model_Alarm();    break;
+			case Set:      model_Set();      break;
+			case Game:     model_Game();     break;
+			case Music:    model_Music();    break;
+			case Calendar: model_Calendar(); break;
+			case Tools:    model_Tools();    break;
+			case About:    model_About();    break;
 			default: break;
 		}
 	}

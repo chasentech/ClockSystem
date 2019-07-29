@@ -6,6 +6,7 @@
 //工作模式
 enum models
 {
+	CloseScreen = 100,	//息屏显示
 	Standby = 0,//待机模式
 	Menu,		//选择功能模式
 	Settime, 	//设置时间模式
@@ -21,6 +22,8 @@ enum models
 
 void set_time(int year, int month, int day, int hour, int min, int sec);
 
+
+void model_Close(void);
 void model_Standby(void);
 void model_Menu(void);
 void model_Settime(void);

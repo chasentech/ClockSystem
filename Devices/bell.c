@@ -6,7 +6,7 @@
 unsigned char bell_ring_flag = 0;
 unsigned int bell_times = 0;
 
-unsigned char bell_alarm_flag = 0;
+//unsigned char bell_alarm_flag = 0;
 
 
 //蜂鸣器初始化
@@ -27,15 +27,4 @@ void bell_short_ring(unsigned int times)
 {
 	bell_ring_flag = 1;
 	bell_times = times*100;
-}
-
-//和整点报时冲突得解决
-void bell_alarm_ring()
-{
-	bell_alarm_flag = 1;
-}
-
-void bell_alarm_close()
-{
-	bell_alarm_flag = 0;
 }

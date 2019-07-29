@@ -91,7 +91,7 @@ unsigned int i_1ms = 0;			//1msÊ±±ê (0-999)ms
 
 extern unsigned char bell_ring_flag;
 extern unsigned int bell_times;
-extern unsigned char bell_alarm_flag;
+
 unsigned char bell_alarm_temp = 2;
 
 void TIM2_IRQHandler()
@@ -99,35 +99,6 @@ void TIM2_IRQHandler()
 	if (TIM_GetITStatus(TIM2, TIM_IT_Update) == SET)
 	{
 		TIM_ClearFlag(TIM2, TIM_IT_Update);
-		
-		if (bell_alarm_flag == 1)
-		{
-			if (bell_alarm_temp == 2)
-			{
-				bell_times = 10000;
-				GPIO_WriteBit(GPIOB, GPIO_Pin_5, (BitAction)!GPIO_ReadOutputDataBit(GPIOB, GPIO_Pin_5));
-				bell_times--;
-				if (bell_times == 0)
-				{
-					bell_times = 10000;
-					bell_alarm_temp = 1;
-					GPIO_SetBits(GPIOB, GPIO_Pin_5);	//¹Ø±Õ·äÃùÆ÷
-				}				
-			}
-			else if (bell_alarm_temp == 1)
-			{
-				GPIO_SetBits(GPIOB, GPIO_Pin_5);	//¹Ø±Õ·äÃùÆ÷
-				bell_times--;
-				if (bell_times == 0)
-				{
-					bell_times = 10000;
-					bell_alarm_temp = 0;
-					GPIO_SetBits(GPIOB, GPIO_Pin_5);	//¹Ø±Õ·äÃùÆ÷
-				}				
-			}
-			else if (bell_alarm_temp == 0) bell_alarm_temp = 2;
-		}
-		
 		
 		
 		//·äÃùÆ÷Ïì

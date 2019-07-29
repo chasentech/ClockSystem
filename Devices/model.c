@@ -10,6 +10,8 @@
 #include "dht12.h"
 #include "TIM.h"
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include "key.h"
 
 
@@ -45,8 +47,8 @@ extern unsigned int i_1ms;			//1ms时标 (0-999)ms
 
 //时间数组2
 unsigned char screen_time[6] = {"00:00"};       //通知栏时间
-unsigned char standby_day[11] = {"2019-02-01"}; //待机日期 
-unsigned char standby_sec[8] = {"00:0010"};     //待机时间 
+unsigned char standby_day[11] = {"2019-02-01"}; //待机日期
+unsigned char standby_sec[8] = {"00:0010"};     //待机时间
 
 struct tm RTTime_toset;
 
@@ -74,30 +76,31 @@ unsigned char alarm_array_show[3][5] = {
 	"1420"		//14:20  OFF
 };
 
+
 //闹钟检测
 void is_alarm_ring()
 {
 	if (alarm_array[0][1] == 1)
 	{
-		if (RTTime.tm_hour*60 + RTTime.tm_min == alarm_array[1][0])
+		if (RTTime.tm_hour*60 + RTTime.tm_min == alarm_array[0][0])
 		{
-			bell_alarm_ring();
+			bell_short_ring(5);
 		}
 	}
 	if (alarm_array[1][1] == 1)
 	{
 		if (RTTime.tm_hour*60 + RTTime.tm_min == alarm_array[1][0])
 		{
-			bell_alarm_ring();
-		}		
+			bell_short_ring(5);
+		}
 	}
 	if (alarm_array[2][1] == 1)
 	{
-		if (RTTime.tm_hour*60 + RTTime.tm_min == alarm_array[1][0])
+		if (RTTime.tm_hour*60 + RTTime.tm_min == alarm_array[2][0])
 		{
-			bell_alarm_ring();
-		}		
-	}	
+			bell_short_ring(5);
+		}
+	}
 }
 
 //更新通知栏时钟
@@ -117,7 +120,6 @@ void update_time_notice()
 	screen_time[0] = RTTime.tm_hour/10 + '0';
 	screen_time[1] = RTTime.tm_hour%10 + '0';
 	
-	
 	//整点报时
 	if (RTTime.tm_min != 0)	//只响一次标志位更新
 		sound_whole_point_flag = 1;
@@ -126,9 +128,9 @@ void update_time_notice()
 	{
 		sound_whole_point_flag = 0; //只响一次
 		bell_short_ring(40);
-	} 
+	}
 	
-
+	is_alarm_ring();	//闹钟
 }
 
 //更新待机时钟
@@ -148,7 +150,10 @@ void update_time_standby(struct tm RTTime_t, unsigned char *t1, unsigned char *t
 		{
 			sound_whole_point_flag = 0; //只响一次
 			bell_short_ring(40);
-		} 		
+		}
+		
+		RTTime = Time_GetCalendarTime();
+		is_alarm_ring();	//闹钟
 	}
 	
 	//秒
@@ -177,8 +182,7 @@ void update_time_standby(struct tm RTTime_t, unsigned char *t1, unsigned char *t
 	t1[2] = RTTime_t.tm_year%100/10 + '0';
 	t1[3] = RTTime_t.tm_year%10 + '0';
 	
-
-	
+	is_alarm_ring();	//闹钟
 }
 
 //设置时间
@@ -219,16 +223,86 @@ void update_time_500ms()
 		
 		update_time_notice();
 		OLED_ShowStr(44, 0, screen_time, 2, 0);
+		
 	}
-
-	//is_alarm_ring();	
 }           
+
+//息屏显示模式
+void model_Close(void)
+{
+	int xx = 0;	
+	int yy = 2; 
+	int move_i = 0;
+	OLED_DrawSpace(0, 0, 127 ,16);
+	OLED_CLE_part();
+	
+	while (1)
+	{
+		//退出待机模式
+		if (i_key != 0)
+		{
+			i_key = 0;
+			once_flag = 1;	//在这必须置一
+			g_model = Standby;
+			
+			standby_sec[2] = ':'; //息屏显示的修正
+			break;
+		}
+
+
+
+		//500ms更新一次时间
+		if (i_1ms % 500 == 0)	
+		{
+			move_i++;
+			if (move_i >= 102) //51s移动一次位置
+			{
+				move_i = 0;
+				
+				srand(standby_sec[5] + standby_sec[6] + 100); //时间作为随机数的种子，秒相加
+				xx = rand() % 61;    //0-60
+				yy = rand() % 3 + 2;    //2-4
+				
+				OLED_CLE_part();
+			}
+			
+			
+			update_time_standby(RTTime, standby_day, standby_sec, 1); //更新数组
+			
+			if (standby_sec[2] == ':')
+				standby_sec[2] = ' ';
+			else standby_sec[2] = ':';
+			
+			//xx = 60; //0-60
+			//yy = 4; //2-4
+			int i = 0;
+			for (i = 0; i < 5; i++)
+			{
+				if (standby_sec[i] == ' ')
+				{
+					OLED_DrawSpace(xx+0 + 12*i, yy, 12 + xx+12*i, yy+4);
+				}
+				else OLED_DrawBMP(xx+0 + 12*i, yy, 12 + xx+12*i, yy+4, (unsigned char *)number_big[standby_sec[i] - '0'], 0);
+			}
+			
+		}
+	}
+}
+
 
 //待机模式
 void model_Standby()
 {
+	unsigned char close_i = 0;
 	unsigned char gif_i = 0;
 	OLED_CLE_part();
+	
+	//通知栏信息显示
+	OLED_DrawBMP(0, 0, 16, 2, (unsigned char *)alarm_flag, 0);	//闹钟显示
+	OLED_DrawBMP(18, 0, 34, 2, (unsigned char *)bell_flag, 0);	//报时显示
+	OLED_ShowStr(44, 0, screen_time, 2, 0);	//中部时间显示
+	OLED_DrawBMP(96, 0, 128, 2,(unsigned char *)BMP_battery, 0);
+	battery_show(2);	//电量显示
 	
 //	printf("1111\n");
 	while (1)
@@ -246,14 +320,12 @@ void model_Standby()
 			break;
 		}
 		
-		
-//		is_alarm_ring();
-//		
-//		if (i_key == 3)
-//		{
-//			bell_alarm_close();
-//		}
-		
+		if (close_i >= 60) //进入息屏显示模式计数，可设置，暂为30s
+		{
+			close_i = 0;
+			g_model = CloseScreen;
+			break;
+		}
 		
 		
 		
@@ -265,14 +337,17 @@ void model_Standby()
 		}
 		
 		//500ms更新一次时间
-		if (i_1ms % 500 == 0)	
+		if (i_1ms % 500 == 0)
 		{
+			close_i++;	//进入息屏显示模式计数
+			
 			OLED_ShowStr(44, 0, (unsigned char *)"     ", 2, 0);	//中部时间关闭
 			update_time_standby(RTTime, standby_day, standby_sec, 1);
 			standby_time_show();
 			
 			gif_show(gif_i++);//动态图
 			if (gif_i >= 5) gif_i = 0;
+			
 			
 			
 //			uint16_t xxx = FLASH_ReadHalfWord(0x08000000);
@@ -352,17 +427,16 @@ void model_Menu()
 			once_flag = 1;
 			
 			i_key = 0;
-			
-			
+				
 			//i_choose最为2-9，settime=2，About=9
 			switch(i_choose)
 			{
 				case Settime: g_model = Settime; break;
 				case Alarm: g_model = Alarm; break;
 				case Set: g_model = Set; break;
-				case Game: break;
-				case Music: break;
-				case Calendar: break;
+				case Game: g_model = Game; break;
+				case Music: g_model = Music; break;
+				case Calendar: g_model = Calendar; break;
 				case Tools: g_model = Tools; break;
 				case About: g_model = About; break;
 				default: break;
@@ -1049,6 +1123,14 @@ void alarm_opera_index(unsigned char index, unsigned char opera)
 	
 }
 
+void alarm_flag_change()
+{
+	if ((alarm_array[0][1] == 1) || (alarm_array[1][1] == 1) || (alarm_array[2][1] == 1))
+		OLED_DrawBMP(0, 0, 16, 2, (unsigned char *)alarm_flag, 0);	//闹钟显示
+	else 
+		OLED_DrawSpace(0, 0, 16, 2);
+}
+
 void model_Alarm()
 {
 	printf("enter alarm\n");
@@ -1105,6 +1187,7 @@ void model_Alarm()
 					alarm_opera_index(i_select, '+');
 					alarm_data2show();
 					alarm_show_list(i_select);
+					alarm_flag_change();
 					break;
 			case 6: if (i_select + 1 <= i_select_max - 1) {
 						i_key = 0;
@@ -1118,6 +1201,7 @@ void model_Alarm()
 					alarm_opera_index(i_select, '-');
 					alarm_data2show();
 					alarm_show_list(i_select);
+					alarm_flag_change();
 					break;
 			default: once_flag = 0; break;
 		}
@@ -1183,7 +1267,16 @@ void set_show_list(unsigned char index, unsigned char i_max)
 void model_opera_index(unsigned char index)
 {
 	if (index == 1) sound_key_flag = !sound_key_flag;
-	if (index == 3) sound_whole_point_ring = !sound_whole_point_ring;
+	if (index == 3) 
+	{
+		sound_whole_point_ring = !sound_whole_point_ring;
+		
+		//图标变化
+		if (sound_whole_point_ring)
+			OLED_DrawBMP(18, 0, 34, 2,(unsigned char *)bell_flag, 0);	//报时显示
+		else 
+			OLED_DrawSpace(18, 0, 34, 2);
+	}
 }
 
 void model_Set()
@@ -1246,6 +1339,245 @@ void model_Set()
 						model_opera_index(i_select); 
 						set_show_list(i_select, i_select_max);break;
 			default: once_flag = 0; break;
+		}
+	}
+}
+
+void game_show_list_t(unsigned char index, unsigned char flag)
+{
+	switch (index)
+	{
+		case 0: OLED_ShowStr(0, 2, (unsigned char *)"Retro Snake", 2, flag); break;
+		case 1: OLED_ShowStr(0, 4, (unsigned char *)"Pull Box", 2, flag); break;
+		default: break;
+	}
+}
+
+void game_show_list(unsigned char index, unsigned char i_max)
+{
+	unsigned char i = 0;
+	for (i = 0; i < i_max; i++)
+	{
+		if (i == index)
+			game_show_list_t(i, 1);
+		else game_show_list_t(i, 0);
+	}
+}
+
+
+void game_retro_snake()
+{
+	OLED_CLE_part();
+	game_init();
+	while (1)
+	{
+		//500ms更新一次时间
+		update_time_500ms();
+		
+		//退出界面
+		if (i_key == 3)
+		{
+			OLED_CLE_part();
+			OLED_ShowStr(0, 2, (unsigned char *)"Retro Snake", 2, 1);
+			OLED_ShowStr(0, 4, (unsigned char *)"Pull Box", 2, 0);
+			i_key = 0;
+			break;
+		}
+		
+		switch(i_key)
+		{
+			case 8: snake_manual(8); i_key = 0; break;
+			case 5: snake_manual(5); i_key = 0; break;
+			case 4: snake_manual(4); i_key = 0; break;
+			case 6: snake_manual(6); i_key = 0; break;
+			default: break;
+		}
+	}
+	
+}
+
+
+//游戏界面 2016.06.29 add
+void model_Game(void)
+{
+	unsigned char i_select = 0;  //子菜单选项
+	unsigned char i_select_max = 2;	//两个游戏
+	OLED_CLE_part();
+	
+	while (1)
+	{
+		//500ms更新一次时间
+		update_time_500ms();
+		
+		//退出界面
+		if (i_key == 3)
+		{
+			i_key = 0;  	//键值归零
+			i_choose = 1;	/*******/
+			once_flag = 1; 	//在这必须置一，在串口中断中也置一了
+			g_model = Menu; //退出模式转换为菜单模式
+			
+			select_temp = 5;  //保留菜单的选项/*******/
+			break;
+		}
+		
+				
+		
+		//界面初始化 /*******/
+		if (i_choose == 5 && once_flag == 1)	/*******/
+		{
+			i_choose = 0;	//默认置为0，待机模式，最后退出时会修改
+			once_flag = 0;
+			
+			OLED_ShowStr(0, 2, (unsigned char *)"Retro Snake", 2, 0);
+			OLED_ShowStr(0, 4, (unsigned char *)"Pull Box", 2, 0);
+			
+			game_show_list(i_select, 2);
+		}
+		
+		
+		//选择相应的功能
+		if (i_key == 1)	//确认
+		{
+			once_flag = 1;
+			
+			if (i_select == 0)
+			{
+				game_retro_snake();
+			}
+		}
+		
+		switch(i_key)
+		{
+			case 8: if (i_select - 1 >= 0) {
+						i_key = 0;	//键值归零，防止多加
+						once_flag = 0;	//防止初始化显示
+						i_select--; 
+						game_show_list(i_select, i_select_max);
+					} break;
+			case 5: if (i_select + 1 <= i_select_max - 1) {
+						i_key = 0;
+						once_flag = 0;
+						i_select++; 
+						game_show_list(i_select, i_select_max);
+					} break;
+			default: once_flag = 0; break;
+		}
+	}
+}
+
+void music_show_list_t(unsigned char index, unsigned char flag)
+{
+	switch (index)
+	{
+		case 0: OLED_ShowStr(0, 2, (unsigned char *)"music1.mp3", 2, flag); break;
+		case 1: OLED_ShowStr(0, 4, (unsigned char *)"music2.mp3", 2, flag); break;
+		case 2: OLED_ShowStr(0, 6, (unsigned char *)"music3.mp3", 2, flag); break;
+		default: break;
+	}
+}
+
+void music_show_list(unsigned char index, unsigned char i_max)
+{
+	unsigned char i = 0;
+	for (i = 0; i < i_max; i++)
+	{
+		if (i == index)
+			music_show_list_t(i, 1);
+		else music_show_list_t(i, 0);
+	}
+}
+
+//音乐界面 2016.06.29 add
+void model_Music(void)
+{
+	unsigned char i_select = 0;  //子菜单选项
+	unsigned char i_select_max = 3; //三首歌
+	OLED_CLE_part();
+	
+	while (1)
+	{
+		//500ms更新一次时间
+		update_time_500ms();
+		
+		//退出界面
+		if (i_key == 3)
+		{
+			i_key = 0;
+			i_choose = 1;/*******/
+			once_flag = 1; 	//在这必须置一，在串口中断中也置一了
+			g_model = Menu;
+			
+			select_temp = 6;  /*******/
+			break;
+		}
+		
+		
+		//界面初始化 /*******/
+		if (i_choose == 6 && once_flag == 1)	/*******/
+		{
+			i_choose = 0;	//默认置为0，待机模式，最后退出时会修改
+			once_flag = 0;
+			
+			OLED_ShowStr(0, 2, (unsigned char *)"NONEM...", 2, 0);
+			
+			music_show_list(i_select, i_select_max);
+		}
+		
+		
+		switch(i_key)
+		{
+			case 8: if (i_select - 1 >= 0) {
+						i_key = 0;	//键值归零，防止多加
+						once_flag = 0;	//防止初始化显示
+						i_select--; 
+						music_show_list(i_select, i_select_max);
+					} break;
+			case 5: if (i_select + 1 <= i_select_max - 1) {
+						i_key = 0;
+						once_flag = 0;
+						i_select++; 
+						music_show_list(i_select, i_select_max);
+					} break;
+			default: once_flag = 0; break;
+		}
+	}	
+}
+
+//日历界面 2016.06.02 add
+void model_Calendar(void)
+{
+	OLED_CLE_part();
+	
+	while (1)
+	{
+		//500ms更新一次时间
+		update_time_500ms();
+		
+		//退出界面
+		if (i_key == 3)
+		{
+			i_key = 0;
+			i_choose = 1;/*******/
+			once_flag = 1; 	//在这必须置一，在串口中断中也置一了
+			g_model = Menu;
+			
+			select_temp = 7;  /*******/
+			break;
+		}
+		
+		//界面初始化 /*******/
+		if (i_choose == 7 && once_flag == 1)	/*******/
+		{
+			i_choose = 0;	//默认置为0，待机模式，最后退出时会修改
+			once_flag = 0;
+			
+			OLED_ShowStr(0, 2, (unsigned char *)"7  1  2  3  4  5  6 ", 1, 0);
+			OLED_ShowStr(0, 3, (unsigned char *)"                  1 ", 1, 0);
+			OLED_ShowStr(0, 4, (unsigned char *)"2  3  4  5  6  7  8", 1, 0);
+			OLED_ShowStr(0, 5, (unsigned char *)"9  10 11 12 13 14 15", 1, 0);
+			OLED_ShowStr(0, 6, (unsigned char *)"16 17 18 19 20 21 22", 1, 0);
+			OLED_ShowStr(0, 7, (unsigned char *)"23 24 25 26 27 28 29", 1, 0);
 		}
 	}
 }

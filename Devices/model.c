@@ -1544,6 +1544,53 @@ void model_Music(void)
 	}	
 }
 
+int is_leap_year(int year)
+{
+	if (year % 100 == 0 && year % 400 == 0)
+	{
+		return 1;
+	}
+	else if (year % 4 == 0)
+	{
+		return 1;
+	}
+	else return 0;
+}
+
+int get_week_day(int year, int month, int day, int *month_num)
+{
+	int week = 0;
+	if (month == 1 || month == 2)
+	{
+		year -= 1;
+		month += 12;
+	}
+	
+	//week    0->周一    6->周日
+	week = (day + 2 * month + 3 * (month + 1) / 5 + year + year / 4 - year/100 + year/400) % 7;
+	
+	//调整星期序号
+	//if (week == 6)
+	//	week = 0;
+	//else
+	//	week += 1;
+	
+	if (month == 2)
+	{
+		if (is_leap_year(year) == 1) *month_num = 29;
+		else *month_num = 28;
+	}
+	else if (month == 4 || month == 6 || month == 9 || month == 11)
+	{
+		*month_num = 30;
+	}
+	else *month_num = 31;
+	
+	
+	return week;
+}
+
+
 //日历界面 2016.06.02 add
 void model_Calendar(void)
 {
@@ -1572,12 +1619,93 @@ void model_Calendar(void)
 			i_choose = 0;	//默认置为0，待机模式，最后退出时会修改
 			once_flag = 0;
 			
+			int month_num = 0;
+			int week_day = 0;
+			RTTime = Time_GetCalendarTime();	//RTTime 在RTC_Time.h
+			week_day = get_week_day(RTTime.tm_year, RTTime.tm_mon+1, 1, &month_num);
+			
+			//printf("[%d][%d][%d]", RTTime.tm_year, RTTime.tm_mon+1, RTTime.tm_mday);
+			
+			/*
+			unsigned char month_num_dis[3] = {0};
+			unsigned char week_day_dis[2] = {0};
+			month_num_dis[0] = (unsigned char)(month_num/10 + '0');
+			month_num_dis[1] = (unsigned char)(month_num%10 + '0');
+			week_day_dis[0] = (unsigned char)(week_day + '0');
+			
+			
+			OLED_ShowStr(0, 2, (unsigned char *)"month_num:", 1, 0);
+			OLED_ShowStr(0, 3, month_num_dis, 1, 0);
+			OLED_ShowStr(0, 4, (unsigned char *)"week_day:", 1, 0);
+			OLED_ShowStr(0, 5, week_day_dis, 1, 0);
+			OLED_ShowStr(0, 6, (unsigned char *)"------------------", 1, 0);
+			*/
+			
+			
+			//if (week_day > 4)
+			//	OLED_ShowStr(0, 2, (unsigned char *)"1  2  3--         1 ", 1, 0);
+			//else OLED_ShowStr(0, 7, (unsigned char *)"          --5  6  7 ", 1, 0);
+			
+			//OLED_ShowStr(0, 5, (unsigned char *)"16 17 18 19 20 21 22", 1, 0);
+			//OLED_ShowStr(0, 5, (unsigned char *)"11111", 1, 0);
+			
+			//显示日历
+			int i = 0;
+			int j = 0;
+			int count = 1;
+			unsigned char temp[4] = {0};
+			for (i = 2; i < 8; i++)
+			{
+				for (j = 0; j < 7; j++)
+				{
+					if (j < week_day && i == 2) //打印空格
+					{
+						temp[0] = ' ';
+						temp[1] = ' ';
+						temp[2] = ' ';
+					}	
+					else if (count < 10)
+					{
+						temp[0] = count + '0';
+						temp[1] = ' ';
+						temp[2] = ' ';
+						count++;
+					}
+					else
+					{
+						temp[0] = count/10 + '0';
+						temp[1] = count%10 + '0';
+						temp[2] = ' ';
+						count++;
+					}
+					
+					if (count-1 > month_num) break;
+					
+					OLED_ShowStr(j*6*3, i, temp, 1, 0);
+				}
+			}
+			
+			//打印表头或表尾
+			if (week_day > 3)
+				OLED_ShowStr(0, 2, (unsigned char *)"1  2  3--", 1, 0);
+			else OLED_ShowStr(0, 7, (unsigned char *)"          --5  6  7 ", 1, 0);
+			
+			/*
 			OLED_ShowStr(0, 2, (unsigned char *)"7  1  2  3  4  5  6 ", 1, 0);
 			OLED_ShowStr(0, 3, (unsigned char *)"                  1 ", 1, 0);
 			OLED_ShowStr(0, 4, (unsigned char *)"2  3  4  5  6  7  8", 1, 0);
 			OLED_ShowStr(0, 5, (unsigned char *)"9  10 11 12 13 14 15", 1, 0);
 			OLED_ShowStr(0, 6, (unsigned char *)"16 17 18 19 20 21 22", 1, 0);
 			OLED_ShowStr(0, 7, (unsigned char *)"23 24 25 26 27 28 29", 1, 0);
+			*/
+			/*
+			OLED_ShowStr(0, 2, (unsigned char *)"1  2  3--         1 ", 1, 0);
+			OLED_ShowStr(0, 3, (unsigned char *)"2  3  4  5  6  7  8 ", 1, 0);
+			OLED_ShowStr(0, 4, (unsigned char *)"9  10 11 12 13 14 15", 1, 0);
+			OLED_ShowStr(0, 5, (unsigned char *)"16 17 18 19 20 21 22", 1, 0);
+			OLED_ShowStr(0, 6, (unsigned char *)"23 24 25 26 27 28 29", 1, 0);
+			OLED_ShowStr(0, 7, (unsigned char *)"30 31", 1, 0);
+			*/
 		}
 	}
 }
